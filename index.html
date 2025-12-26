@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <title>蜜雪冰城员工排班智能助手</title>
+    <!-- 1. 替换为Coze官方稳定版SDK（解决beta版兼容性问题） -->
+    <script src="https://lf-cdn.coze.cn/obj/unpkg/flow-platform/chat-app-sdk/1.1.10/libs/cn/index.js"></script>
+    <style>
+        /* 保留所有响应式样式，仅优化提示文案样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
+
+        body {
+            background-color: #f7f9fa;
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 10px 0;
+        }
+
+        .container {
+            max-width: 850px;
+            width: calc(100% - 20px);
+            margin: 0 auto;
+            padding: clamp(15px, 3vw, 25px);
+            background-color: white;
+            border-radius: clamp(8px, 2vw, 12px);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        header {
+            text-align: center;
+            padding-bottom: clamp(15px, 2vw, 20px);
+            border-bottom: 1px solid #eee;
+            margin-bottom: clamp(15px, 2vw, 20px);
+        }
+
+        header h1 {
+            color: #1677ff;
+            font-size: clamp(18px, 4vw, 26px);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        header p {
+            color: #666;
+            font-size: clamp(12px, 2vw, 14px);
+        }
+
+        /* 调试提示样式（新增） */
+        .debug-tip {
+            color: #ff4d4f;
+            font-size: 12px;
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: #fff2f0;
+            border-radius: 6px;
+        }
+
+        .coze-chat-container {
+            height: clamp(300px, 40vh, 450px);
+            border-radius: clamp(8px, 2vw, 10px);
+            margin-bottom: clamp(20px, 3vw, 30px);
+            border: 1px solid #e8f3ff;
+            background-color: #fbfdff;
+            box-shadow: 0 2px 8px rgba(22, 119, 255, 0.08);
+            touch-action: manipulation;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(clamp(180px, 30vw, 220px), 1fr));
+            gap: clamp(10px, 2vw, 15px);
+            padding-top: clamp(15px, 2vw, 20px);
+            border-top: 1px solid #eee;
+        }
+
+        .feature {
+            padding: clamp(12px, 2vw, 18px);
+            background-color: #f9f9f9;
+            border-radius: clamp(6px, 1.5vw, 8px);
+            text-align: center;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        .feature:hover {
+            box-shadow: 0 2px 6px rgba(22, 119, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .feature h3 {
+            color: #1677ff;
+            margin-bottom: 8px;
+            font-size: clamp(14px, 2.5vw, 16px);
+        }
+
+        .feature p {
+            color: #666;
+            font-size: clamp(12px, 2vw, 14px);
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
+            }
+            .coze-chat-container {
+                height: clamp(280px, 45vh, 400px);
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 5px 0;
+            }
+            .container {
+                width: calc(100% - 10px);
+                padding: 12px;
+            }
+            .coze-chat-container {
+                height: 300px;
+            }
+            .feature {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>蜜雪冰城员工排班智能助手</h1>
+            <p>高效制定排班计划，合规性自动分析</p>
+        </header>
+
+        <!-- 新增调试提示（帮助排查问题） -->
+        <div class="debug-tip">
+            提示：请用HTTP/HTTPS协议运行（勿双击打开），并配置Coze域名白名单
+        </div>
+        
+        <div class="coze-chat-container" id="cozeChat"></div>
+        
+        <div class="features">
+            <div class="feature">
+                <h3>智能排班生成</h3>
+                <p>根据员工人数、营业时间自动生成合理排班表</p>
+            </div>
+            <div class="feature">
+                <h3>班次查询</h3>
+                <p>快速查询任意员工的班次安排，支持周/月维度</p>
+            </div>
+            <div class="feature">
+                <h3>合规分析</h3>
+                <p>检测排班是否符合劳动法，避免超时、缺岗问题</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 2. 补充错误处理和调试日志，便于排查对话问题
+        window.onload = async function() {
+            try {
+                // 初始化Coze SDK（稳定版+调试日志+完整配置）
+                const chatClient = new CozeWebSDK.WebChatClient({
+                    container: document.getElementById('cozeChat'),
+                    config: {
+                        bot_id: '7587716460324159534', // 确认是你的智能体ID
+                        locale: 'zh-CN',
+                        enableLog: true, // 开启调试日志（F12控制台可看）
+                    },
+                    componentProps: {
+                        title: '蜜雪冰城排班助手',
+                        theme: {
+                            primaryColor: '#1677ff',
+                        },
+                        showAvatar: true,
+                        showTitle: true,
+                        input: {
+                            placeholder: '输入你的问题（比如：生成下周排班表）...',
+                            fontSize: 'clamp(12px, 2vw, 14px)'
+                        },
+                        // 开启消息收发的完整回调（便于调试）
+                        onMessageSend: (msg) => {
+                            console.log('发送消息：', msg);
+                        },
+                        onMessageReceive: (msg) => {
+                            console.log('接收消息：', msg);
+                        }
+                    },
+                    auth: {
+                        type: 'token',
+                        token: 'pat_LK2KfSnlroFqECccAdAYgz7c58SheipWntZMPjLIPsuEKqpBB7qFgDTjlybyZMWD', // 你的真实Token
+                        // 可选：Token过期时的刷新逻辑（若无则删除）
+                        // onRefreshToken: async () => {
+                        //     return '你的新Token';
+                        // }
+                    },
+                    // 新增：SDK初始化成功/失败回调
+                    onSuccess: () => {
+                        console.log('✅ Coze SDK初始化成功，可正常对话');
+                    },
+                    onError: (error) => {
+                        console.error('❌ SDK初始化失败：', error);
+                        alert('智能助手初始化失败，请检查Token/域名白名单/SDK版本');
+                    }
+                });
+
+                // 验证SDK是否挂载成功
+                console.log('SDK实例：', chatClient);
+            } catch (error) {
+                console.error('❌ 代码执行错误：', error);
+                alert('代码运行出错：' + error.message);
+            }
+        };
+
+        // 3. 监听屏幕缩放，保证对话容器适配
+        window.addEventListener('resize', function() {
+            const chatContainer = document.getElementById('cozeChat');
+            if (window.innerWidth <= 480) {
+                chatContainer.style.height = '300px';
+            } else if (window.innerWidth <= 768) {
+                chatContainer.style.height = 'clamp(280px, 45vh, 400px)';
+            } else {
+                chatContainer.style.height = 'clamp(300px, 40vh, 450px)';
+            }
+        });
+    </script>
+</body>
+</html>
